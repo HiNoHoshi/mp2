@@ -90,21 +90,6 @@ def solve(board, pents):
     return solution
 
 
-def remove_tile(board, tile_id):
-    for x, row in enumerate(board):
-        for y, column in enumerate(row):
-            if column == tile_id:
-                board[x][y] = 0
-
-    return board
-
-def tile_in_form(variables, variable, value):
-    (form_id, pos) = value
-    form_variable = variables[variable]["forms"][form_id]
-    form_variable = form_variable.astype(int) * variable
-    return (form_variable, pos)
-
-
 #Method to define the store the dorms and the initial domain of each tile
 def define_initial_variables(board, pents):
     variables = dict()
@@ -223,11 +208,16 @@ def update_state(variables, board, value, variable):
 
     return new_board
 
+def remove_tile(board, tile_id):
+    for x, row in enumerate(board):
+        for y, column in enumerate(row):
+            if column == tile_id:
+                board[x][y] = 0
 
-"""
-The solution returned
-is of the form [(p1, (row1, col1))...(pn,  (rown, coln))]
-where pi is a tile (may be rotated or flipped), and (rowi, coli) is
-the coordinate of the upper left corner of pi in the board (lowest row and column index
-that the tile covers).
-"""
+    return board
+
+def tile_in_form(variables, variable, value):
+    (form_id, pos) = value
+    form_variable = variables[variable]["forms"][form_id]
+    form_variable = form_variable.astype(int) * variable
+    return (form_variable, pos)
