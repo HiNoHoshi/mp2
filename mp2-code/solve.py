@@ -1,21 +1,28 @@
 # -*- coding: utf-8 -*-
 import numpy as np
+from collections import deque
 
 
 def solve(board, pents):
+    print("[ * ]"*30)
     solution = [ ]
 
     solution_board = board * 0
     #variables = define_initial_variables(solution_board, [pents[9],pents[10]])
     variables = define_initial_variables(solution_board, pents)
     unassigned_variables = [ ]
-    assigned_variables = [ ]
+    assigned_variables = deque([ ])
+    solution_graph = dict()
     #print(variables)
+
+
+    #test_board = np.array([[0,1,1,1,1],[0,1,1,0,1],[1,1,0,0,1],[0,1,1,1,1],[0,0,1,1,1]])
+    #has_small_holes(test_board)
 
     for variable, values in variables.items():
         unassigned_variables.append((variable,values["domain"]))
         unassigned_variables = sorted(unassigned_variables, key =  lambda item: len(item[1]))
-
+        solution_graph[variable] = dict()
 
     while len(unassigned_variables) > 0:
         current_variable = unassigned_variables[0]
@@ -24,18 +31,18 @@ def solve(board, pents):
         print("Assigned_variables", len(assigned_variables))
         (variable,values) = current_variable
         dead_end = False
-
+        print("# of posible Values", len(values))
         unassigned_variables.remove(current_variable)
         selected_value = None
         min_domain_general_reduction = 0
 
-        print("values")
-        print(values)
+        #print("values")
+        #print(values)
         for value in values:
-            print("value", value)
+            #print("value", value)
             impossible_value = False
             domain_general_reduction = 0
-
+            #solution_graph[current_variable[0]][]
             temp_solution_board = update_state(variables, solution_board, value, variable)
 
             for unassigned_variable in unassigned_variables[0:3]:
@@ -45,12 +52,10 @@ def solve(board, pents):
 
                 if new_domain_size == 0:
                     impossible_value = True
-                    print("Impossuble value")
+                    print("Impossible value")
                     break
                 else:
                     domain_general_reduction = domain_general_reduction + (last_domain_size - new_domain_size)
-                    #print("domain_general_reduction", domain_general_reduction)
-
 
             if not impossible_value:
                 if min_domain_general_reduction == 0:
@@ -64,17 +69,29 @@ def solve(board, pents):
             elif not selected_value and value == values[len(values)-1]:
                 print("dead end")
                 #Backtracking
-                last_variable = assigned_variables[-1]
-                solution_board = remove_tile(solution_board, last_variable[0])
-                current_variable = (current_variable[0],update_domain(variables, solution_board, current_variable[0], variables[current_variable[0]]["domain"]))
-                unassigned_variables.append(current_variable)
-                unassigned_variables.append(last_variable)
-                unassigned_variables = sorted(unassigned_variables, key =  lambda item: len(item[1]))
-                print(unassigned_variables[:])
-                assigned_variables.remove(last_variable)
-                del solution[-1]
 
-                #print(solution_board)
+                last_variable = assigned_variables.pop()
+                solution_board = remove_tile(solution_board, last_variable[0])
+
+                unassigned_variables.append(current_variable)
+                unassigned_variables = [(var[0],update_domain(variables, solution_board, var[0], variables[var[0]]["domain"])) for var in unassigned_variables]
+
+                if len(last_variable[1]) > 0:
+                    unassigned_variables.append(last_variable)
+
+                while len(last_variable[1]) == 0:
+                    last_last_variable = assigned_variables[-1]
+                    last_variable = (last_variable[0], update_domain(variables, solution_board, last_variable[0], variables[last_variable[0]]["domain"]))
+                    unassigned_variables.append(last_variable)
+
+                    last_variable = assigned_variables.pop()
+                    solution_board = remove_tile(solution_board, last_variable[0])
+                    unassigned_variables.append(last_variable)
+                    del solution[-1]
+
+                unassigned_variables = sorted(unassigned_variables, key =  lambda item: len(item[1]))
+                del solution[-1]
+                print(solution_board)
                 break
 
         if selected_value:
@@ -112,7 +129,6 @@ def define_initial_variables(board, pents):
             variables[tile_id]["domain"] = set_domain(variables, board, tile_id)
 
     return variables
-
 
 #Set the domain for a tile in a specific board
 def set_domain(variables,board, variable):
@@ -193,6 +209,28 @@ def tile_overlap(variables, board, variable, value):
                 break
 
     return overlaps
+
+#More constrain method to avoid false movements
+def has_small_holes(board):
+    zeros = [ ]
+    islands = dict()
+
+    (high, width) = board.shape
+    for i, row in enumerate(board):
+        for j, column in enumerate(row):
+            if column == 0:
+                zeros.append((i,j))
+                islands[(i,j)] = [(i,j)]
+
+
+    for z in zeros:
+        for land in islands.keys():
+            if z != land:
+                if abs(z[0] - land[0]) == 1 or abs(z[1] - land[1]) == 1:
+                    islands[land].append(z)
+
+    final_islands = [v for v in islands.values()]
+    print(final_islands)
 
 
 #Create a new board with the variable possitionated in the last stat board
