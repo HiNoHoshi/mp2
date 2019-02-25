@@ -1,97 +1,112 @@
 # -*- coding: utf-8 -*-
 import numpy as np
-from queue import PriorityQueue
-import datetime
-
+from collections import deque
 
 
 def solve(board, pents):
-    """
-    This is the function you will implement. It will take in a numpy array of the board
-    as well as a list of n tiles in the form of numpy arrays.
-
-    -Use np.flip and np.rot90 to manipulate pentominos.
-
-    -You can assume there will always be a solution.
-    """
+    print("[ * ]"*30)
     solution = [ ]
 
     solution_board = board * 0
-    #print(solution_board)
-    variables = define_initial_variables(solution_board, pents)
-    variables = dict(sorted(variables.items(), key =  lambda item: len(item[1]["domain"])))
-    unasigned_variables = dict()
+    variables = define_initial_variables(solution_board, [pents[9],pents[2]])
+    #variables = define_initial_variables(solution_board, pents)
+    unassigned_variables = [ ]
+    assigned_variables = deque([ ])
+    solution_graph = dict()
+    #print(variables)
 
+
+    #test_board = np.array([[0,1,1,1,1],[0,1,1,0,1],[1,1,0,0,1],[0,1,1,1,1],[0,0,1,1,1]])
+    #has_small_holes(test_board)
 
     for variable, values in variables.items():
-        unasigned_variables[variable] = values["domain"]
+        #LRV: create a list of variables showing first the variables with fewer domain
+        unassigned_variables.append((variable,values["domain"]))
+        unassigned_variables = sorted(unassigned_variables, key =  lambda item: len(item[1]))
+        solution_graph[variable] = dict()
 
-    for variable, values in variables.items():
-        print("Variable", variable)
-        del unasigned_variables[variable]
-        selected_value = 0
+    while len(unassigned_variables) > 0:
+        current_variable = unassigned_variables[0]
+        print("Variable", current_variable[0])
+        #print("unassigned_variables", len(unassigned_variables))
+        #print("Assigned_variables", len(assigned_variables))
+        (variable,values) = current_variable
+        dead_end = False
+        print("# of posible Values", len(values))
+        unassigned_variables.remove(current_variable)
+        selected_value = None
         min_domain_general_reduction = 0
 
-        print(datetime.datetime.now())
-        for value in values["domain"]:
+        #print("values")
+        #print(values)
+        for value in values:
+            print("value", value)
+            impossible_value = False
+            domain_general_reduction = 0
+            #solution_graph[current_variable[0]][]
+            temp_solution_board = update_state(variables, solution_board, value, variable)
 
-            if not tile_overlap(solution_board, value):
-                impossible_value = False
-                domain_general_reduction = 0
+            for unassigned_variable in unassigned_variables[:3]:
+                (u_variable,u_values) = unassigned_variable
+                last_domain_size = len(u_values)
+                new_domain_size = len(update_domain(variables, temp_solution_board, u_variable, u_values))
+                print("possible new domain", new_domain_size)
 
-                temp_solution_board = update_state(solution_board, value, variable)
+                if new_domain_size == 0:
+                    impossible_value = True
+                    #print("Impossible value")
+                    break
+                else:
+                    domain_general_reduction = domain_general_reduction + (last_domain_size - new_domain_size)
 
-                for unasigned_variable, temp_domain in unasigned_variables.items():
-                    last_domain_size = len(temp_domain)
-                    new_domain_size = len(set_domain(temp_solution_board, variables[unasigned_variable]["forms"]))
+            if not impossible_value:
+                if min_domain_general_reduction == 0:
+                    selected_value = value
+                    min_domain_general_reduction = domain_general_reduction;
 
-                    if new_domain_size == 0:
-                        impossible_value = True
-                        break
-                    else:
-                        domain_general_reduction = domain_general_reduction + (last_domain_size - new_domain_size)
+                elif domain_general_reduction < min_domain_general_reduction:
+                    min_domain_general_reduction = domain_general_reduction;
+                    selected_value = value
 
-                if not impossible_value:
-                    if min_domain_general_reduction == 0:
-                        selected_value = value
-                        min_domain_general_reduction = domain_general_reduction;
+            elif not selected_value and value == values[len(values)-1]:
+                #print("dead end")
+                #Backtracking
 
-                    elif domain_general_reduction > min_domain_general_reduction:
-                        min_domain_general_reduction = domain_general_reduction;
-                        selected_value = value
+                last_variable = assigned_variables.pop()
+                solution_board = remove_tile(solution_board, last_variable[0])
 
+                unassigned_variables.append(current_variable)
+                unassigned_variables = [(var[0],update_domain(variables, solution_board, var[0], variables[var[0]]["domain"])) for var in unassigned_variables]
 
-        print("solution_board:")
-        print(solution_board)
-        solution_board = update_state(solution_board, selected_value, variable)
-        solution.append(formating_solution(selected_value, variable))
+                if len(last_variable[1]) > 0:
+                    unassigned_variables.append(last_variable)
 
-    #print(solution_board)
+                while len(last_variable[1]) == 0:
+                    last_last_variable = assigned_variables[-1]
+                    last_variable = (last_variable[0], update_domain(variables, solution_board, last_variable[0], variables[last_variable[0]]["domain"]))
+                    unassigned_variables.append(last_variable)
+
+                    last_variable = assigned_variables.pop()
+                    solution_board = remove_tile(solution_board, last_variable[0])
+                    unassigned_variables.append(last_variable)
+                    del solution[-1]
+
+                unassigned_variables = sorted(unassigned_variables, key =  lambda item: len(item[1]))
+                del solution[-1]
+                print(solution_board)
+                break
+
+        if selected_value:
+            values.remove(selected_value)
+            solution_board = update_state(variables, solution_board, selected_value, variable)
+            unassigned_variables = [(var[0],update_domain(variables, solution_board, var[0], var[1])) for var in unassigned_variables]
+            assigned_variables.append(current_variable)
+
+            print("solution_board:")
+            print(solution_board)
+            solution.append(tile_in_form(variables, current_variable[0], selected_value))
+
     return solution
-
-
-
-#Method to format the solution for a tile based on the value and its Id
-def formating_solution(value, pent_id):
-    pos_row = -1
-    pos_column = -1
-    origin_pent = [ ]
-
-    for i, row in enumerate(value):
-        temp_row = [ ]
-        for j, column in enumerate(row):
-            if -1 in column:
-                temp_row.append(0)
-            else:
-                temp_row.append(pent_id)
-                if pos_row == -1:
-                    pos_row = column[0] - i
-                if pos_column == -1:
-                    pos_column = column[1]
-
-        origin_pent.append(temp_row)
-
-    return (np.array(origin_pent),(pos_row, pos_column))
 
 
 #Method to define the store the dorms and the initial domain of each tile
@@ -99,69 +114,66 @@ def define_initial_variables(board, pents):
     variables = dict()
 
     for tile in pents:
+        tile_id = np.max(tile[0])
         tile_shape = np.array([[(x/x) if not (x == 0) else 0 for x in j] for j in tile])
         rep_shape = False
-        #print("variables",variables)
+
         for v,var in enumerate(variables):
             #check if this type of tile have been found before
             if np.array_equal(variables[var]["forms"][0],tile_shape):
-                variables[np.max(tile[0])] =  variables[var]
+                variables[tile_id] =  variables[var]
                 rep_shape = True
                 break
 
         if rep_shape == False:
-            variables[np.max(tile[0])] =  {"forms":forms(tile_shape), "domain":[ ]}
+            variables[tile_id] =  {"forms":forms(tile_shape), "domain":[ ]}
             #define the initial domine with the unary: the tile has to be completly in the board
-            variables[np.max(tile[0])]["domain"] = set_domain(board, variables[np.max(tile[0])]["forms"])
+            variables[tile_id]["domain"] = set_domain(variables, board, tile_id)
 
     return variables
 
-
 #Set the domain for a tile in a specific board
-def set_domain(board, forms):
+def set_domain(variables,board, variable):
     domain = [ ]
+    tile_forms = variables[variable]["forms"]
     for i, row in enumerate(board):
         for j, column in enumerate(row):
-            for form in forms:
+            for form_id, form in tile_forms.items():
                 if not overflows_the_board(board, (i, j), form):
-                    value = define_position_value(form,(i,j))
-                    if not tile_overlap(board, value):
-                        #locate the tile on position
-                        domain.append(value)
+                    #locate the tile on position
+                    domain.append((form_id,(i, j)))
 
     return domain
 
+
+def update_domain(variables, new_board,variable, old_domain):
+    new_domain = [ ]
+    for value in old_domain:
+        if not tile_overlap(variables, new_board, variable, value):
+            new_domain.append(value)
+
+    return new_domain
+
 # To produce the different form that a tile can have
 def forms(tile):
-    forms = [ ]
-    forms.append(tile)
-
-    alt_forms = [np.flip(tile), np.rot90(tile) , np.rot90(np.rot90(tile)) , np.rot90(np.rot90(np.rot90(tile)))]
+    temp_form_id = 0;
+    forms = dict()
+    forms[temp_form_id] = tile
+    temp_form_id = temp_form_id + 1
+    alt_forms = [np.rot90(tile) , np.rot90(np.rot90(tile)) , np.rot90(np.rot90(np.rot90(tile))), np.flip(tile), np.rot90(np.flip(tile)) , np.rot90(np.rot90(np.flip(tile))), np.rot90(np.rot90(np.rot90(np.flip(tile))))]
 
     for i, alt in enumerate(alt_forms):
         rep = False
-        for form in forms:
+        for form_id, form in forms.items():
             if np.array_equal(alt,form):
                 rep = True
                 break
 
         if not rep:
-            forms.append(alt)
+            forms[temp_form_id] = alt
+            temp_form_id = temp_form_id + 1
 
     return forms
-
-
-#Return a positioned tile with a coordinate in each of its boxes and a tupple (-1,-1) for its empty spaces
-def define_position_value(tile, pos):
-    position_tile = np.zeros(tile.shape, dtype = 'i,i')
-    for i,tile_row in enumerate(tile):
-        for j, tile_column in enumerate(tile_row):
-            if not tile_column == 0:
-                position_tile[i][j] = ((pos[0]+i),(pos[1]+j))
-            else:
-                position_tile[i][j] = (-1,-1)
-
-    return position_tile
 
 
 #Check constraint of laying completly on the board
@@ -186,33 +198,66 @@ def overflows_the_board(board, pos, tile):
 
 
 #Check constraint of not overlaping
-def tile_overlap(board, value):
+def tile_overlap(variables, board, variable, value):
     overlaps = False
-    for y, tile_row in enumerate(value):
-        for x, tile_column in enumerate(tile_row):
-            if not (-1 in tile_column):
-                if (board[tile_column[0]][tile_column[1]] != 0):
-                    overlaps = True
-                    break
+    (form_id, pos) = value
+    tile_form = variables[variable]["forms"][form_id]
+    for x, tile_row in enumerate(tile_form):
+        for y, tile_column in enumerate(tile_row):
+            #print("position", pos)
+            #print("x:",x)
+            if tile_column == 1 and board[pos[0]+x][pos[1]+y] != 0:
+                overlaps = True
+                break
 
     return overlaps
 
+#More constrain method to avoid false movements
+def has_small_holes(board):
+    zeros = [ ]
+    islands = dict()
+
+    (high, width) = board.shape
+    for i, row in enumerate(board):
+        for j, column in enumerate(row):
+            if column == 0:
+                zeros.append((i,j))
+                islands[(i,j)] = [(i,j)]
+
+
+    for z in zeros:
+        for land in islands.keys():
+            if z != land:
+                if abs(z[0] - land[0]) == 1 or abs(z[1] - land[1]) == 1:
+                    islands[land].append(z)
+
+    final_islands = [v for v in islands.values()]
+    print(final_islands)
+
 
 #Create a new board with the variable possitionated in the last stat board
-def update_state(board, value, variable):
+def update_state(variables, board, value, variable):
     new_board = np.copy(board)
-    for y, tile_row in enumerate(value):
-        for x, tile_column in enumerate(tile_row):
-            if not -1 in tile_column:
-                new_board[tile_column[0]][tile_column[1]] = variable
+    (form_id, pos) = value
+    tile_form = variables[variable]["forms"][form_id]
+
+    for x, tile_row in enumerate(tile_form):
+        for y, tile_column in enumerate(tile_row):
+            if tile_column == 1:
+                new_board[pos[0]+x][pos[1]+y] = variable
 
     return new_board
 
+def remove_tile(board, tile_id):
+    for x, row in enumerate(board):
+        for y, column in enumerate(row):
+            if column == tile_id:
+                board[x][y] = 0
 
-"""
-The solution returned
-is of the form [(p1, (row1, col1))...(pn,  (rown, coln))]
-where pi is a tile (may be rotated or flipped), and (rowi, coli) is
-the coordinate of the upper left corner of pi in the board (lowest row and column index
-that the tile covers).
-"""
+    return board
+
+def tile_in_form(variables, variable, value):
+    (form_id, pos) = value
+    form_variable = variables[variable]["forms"][form_id]
+    form_variable = form_variable.astype(int) * variable
+    return (form_variable, pos)

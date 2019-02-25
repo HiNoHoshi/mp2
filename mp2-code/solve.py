@@ -4,36 +4,34 @@ from collections import deque
 
 
 def solve(board, pents):
-    print("[ * ]"*30)
+    print("[ * ]"*100)
     solution = [ ]
 
     solution_board = board * 0
-    #variables = define_initial_variables(solution_board, [pents[9],pents[10]])
+    #variables = define_initial_variables(solution_board, [pents[9],pents[2]])
     variables = define_initial_variables(solution_board, pents)
     unassigned_variables = [ ]
     assigned_variables = deque([ ])
-    solution_graph = dict()
-    #print(variables)
-
 
     #test_board = np.array([[0,1,1,1,1],[0,1,1,0,1],[1,1,0,0,1],[0,1,1,1,1],[0,0,1,1,1]])
     #has_small_holes(test_board)
 
-    for variable, values in variables.items():
-        unassigned_variables.append((variable,values["domain"]))
+    for var, val in variables.items():
+        #LRV: create a list of variables showing first the variables with fewer domain
+        unassigned_variables.append((var,val["domain"]))
         unassigned_variables = sorted(unassigned_variables, key =  lambda item: len(item[1]))
-        solution_graph[variable] = dict()
 
     while len(unassigned_variables) > 0:
         current_variable = unassigned_variables[0]
         print("Variable", current_variable[0])
         print("unassigned_variables", len(unassigned_variables))
         print("Assigned_variables", len(assigned_variables))
-        (variable,values) = current_variable
+        (variable_id , values) = current_variable
         dead_end = False
-        print("# of posible Values", len(values))
+        #print("# of posible Values", len(values))
         unassigned_variables.remove(current_variable)
         selected_value = None
+        impossible_values = [ ]
         min_domain_general_reduction = 0
 
         #print("values")
@@ -42,22 +40,30 @@ def solve(board, pents):
             #print("value", value)
             impossible_value = False
             domain_general_reduction = 0
-            #solution_graph[current_variable[0]][]
-            temp_solution_board = update_state(variables, solution_board, value, variable)
+            temp_solution_board = update_state(variables, solution_board, value, variable_id)
 
-            for unassigned_variable in unassigned_variables[0:3]:
+            for unassigned_variable in unassigned_variables[:3]:
+
                 (u_variable,u_values) = unassigned_variable
                 last_domain_size = len(u_values)
-                new_domain_size = len(update_domain(variables, temp_solution_board, u_variable, u_values))
+
+                new_domain = update_domain(variables, temp_solution_board, u_variable, u_values)
+                new_domain_size = len(new_domain)
+
+                #print("possible new domain", new_domain_size)
 
                 if new_domain_size == 0:
                     impossible_value = True
-                    print("Impossible value")
+                    #print("Impossible value")
                     break
                 else:
                     domain_general_reduction = domain_general_reduction + (last_domain_size - new_domain_size)
 
-            if not impossible_value:
+            if impossible_value:
+                current_variable[1].remove(value)
+                break
+
+            else:
                 if min_domain_general_reduction == 0:
                     selected_value = value
                     min_domain_general_reduction = domain_general_reduction;
@@ -66,43 +72,40 @@ def solve(board, pents):
                     min_domain_general_reduction = domain_general_reduction;
                     selected_value = value
 
-            elif not selected_value and value == values[len(values)-1]:
-                print("dead end")
-                #Backtracking
-
-                last_variable = assigned_variables.pop()
-                solution_board = remove_tile(solution_board, last_variable[0])
-
-                unassigned_variables.append(current_variable)
-                unassigned_variables = [(var[0],update_domain(variables, solution_board, var[0], variables[var[0]]["domain"])) for var in unassigned_variables]
-
-                if len(last_variable[1]) > 0:
-                    unassigned_variables.append(last_variable)
-
-                while len(last_variable[1]) == 0:
-                    last_last_variable = assigned_variables[-1]
-                    last_variable = (last_variable[0], update_domain(variables, solution_board, last_variable[0], variables[last_variable[0]]["domain"]))
-                    unassigned_variables.append(last_variable)
-
-                    last_variable = assigned_variables.pop()
-                    solution_board = remove_tile(solution_board, last_variable[0])
-                    unassigned_variables.append(last_variable)
-                    del solution[-1]
-
-                unassigned_variables = sorted(unassigned_variables, key =  lambda item: len(item[1]))
-                del solution[-1]
-                print(solution_board)
-                break
-
+        #After checking all the values
         if selected_value:
             values.remove(selected_value)
-            solution_board = update_state(variables, solution_board, selected_value, variable)
+            solution_board = update_state(variables, solution_board, selected_value, variable_id)
             unassigned_variables = [(var[0],update_domain(variables, solution_board, var[0], var[1])) for var in unassigned_variables]
             assigned_variables.append(current_variable)
 
             print("solution_board:")
             print(solution_board)
             solution.append(tile_in_form(variables, current_variable[0], selected_value))
+
+        else:
+            print("dead end")
+            #Backtracking
+
+            last_variable = assigned_variables.pop()
+            solution_board = remove_tile(solution_board, last_variable[0])
+            unassigned_variables.append(current_variable)
+
+            while len(last_variable[1]) == 0:
+                last_last_variable = assigned_variables.pop()
+                unassigned_variables.append(last_variable)
+                last_variable = last_last_variable
+                solution_board = remove_tile(solution_board, last_variable[0])
+                del solution[-1]
+
+            #Reset the domain of all the unassigned variables for the last state
+            unassigned_variables = [(var[0],update_domain(variables, solution_board, var[0], variables[var[0]]["domain"])) for var in unassigned_variables]
+
+            unassigned_variables.append(last_variable)
+            unassigned_variables = sorted(unassigned_variables, key =  lambda item: len(item[1]))
+            del solution[-1]
+
+            print(solution_board)
 
     return solution
 
