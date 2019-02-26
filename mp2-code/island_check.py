@@ -1,5 +1,9 @@
 import numpy as np
 
+board =np.zeros((6,10))
+board[1,1] = board[1,0] = board[0,1] = board[1,2] = board[2,1] = 0
+
+number =5
 def island_check(board,number):
     zero = np.argwhere(board == 0)
     zero_list = zero.tolist()
@@ -22,26 +26,24 @@ def island_check(board,number):
         un_assigned.remove(element)
         while indicator != 0:
             previous_indicator = indicator
-            indicator = 0
-            new_list = []
             for k in range(previous_indicator):
-                element = element_list[k]
-                element_neighbor = neighbors(element[0], element[1])
+                indicator = 0
+                element = element_list[-previous_indicator+k]
+                element_neighbor = neighbors(element[0],element[1])
                 for i in range(len(un_assigned)):
                     if un_assigned[i] in element_neighbor:
                         new_island.append(un_assigned[i])
                         indicator += 1
-                    new_list += new_island[-indicator:]
-                for i in new_list:
+            element_list = new_island[-indicator:]
+            for i in element_list:
+                if i in un_assigned:
                     un_assigned.remove(i)
-                element_list = new_list
-        new_island =set(new_island)
         island.append(new_island)
     island_size = []
     for i in island:
         island_size.append(len(i))
     output = []
-    for i in range(island_size):
+    for i in range(len(island_size)):
         if island_size[i] < number:
             output.append(island[i])
     if len(output) != 0:
