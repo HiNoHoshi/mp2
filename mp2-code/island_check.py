@@ -26,7 +26,7 @@ def island_check(board,number):
             new_list = []
             for k in range(previous_indicator):
                 element = element_list[k]
-                element_neighbor = neighbors(element)
+                element_neighbor = neighbors(element[0], element[1])
                 for i in range(len(un_assigned)):
                     if un_assigned[i] in element_neighbor:
                         new_island.append(un_assigned[i])
