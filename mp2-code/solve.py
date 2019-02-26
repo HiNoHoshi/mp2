@@ -33,9 +33,9 @@ def solve(board, pents):
         selected_value = None
         min_domain_general_reduction = 0
 
-        #print("values")
-        #print(values)
-        for value in values:
+        index = 0
+        for v in  range(len(values)):
+            value = values[index]
             print("value", value)
             impossible_value = False
             domain_general_reduction = 0
@@ -57,6 +57,7 @@ def solve(board, pents):
 
             if impossible_value:
                 values.remove(value)
+                index = index - 1
                 print("impossible value")
 
 
@@ -68,6 +69,8 @@ def solve(board, pents):
                 elif domain_general_reduction < min_domain_general_reduction:
                     min_domain_general_reduction = domain_general_reduction;
                     selected_value = value
+
+            index = index + 1
 
         #After checking all the values
         if selected_value:
@@ -144,10 +147,10 @@ def set_domain(variables,board, variable):
             for form_id, form in tile_forms.items():
                 if not overflows_the_board(board, (i, j), form):
                     temp_board = update_state(variables, board, (form_id,(i, j)), variable)
-                    print(temp_board)
+                    #print(temp_board)
                     if not one_overlap(board, (i, j), form):
                         if not island_check(temp_board,5):
-                            print("approve")
+                            #print("approve")
                             domain.append((form_id,(i, j)))
 
     return domain
@@ -157,7 +160,8 @@ def update_domain(variables, new_board,variable, old_domain):
     new_domain = [ ]
     for value in old_domain:
         if not tile_overlap(variables, new_board, variable, value):
-            new_domain.append(value)
+            if not island_check(new_board,5):
+                new_domain.append(value)
 
     return new_domain
 
