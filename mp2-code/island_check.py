@@ -22,18 +22,20 @@ def island_check(board,number):
         un_assigned.remove(element)
         while indicator != 0:
             previous_indicator = indicator
-            element_list = new_island[-previous_indicator:]
+            indicator = 0
+            new_list = []
             for k in range(previous_indicator):
-                indicator = 0
                 element = element_list[k]
                 element_neighbor = neighbors(element)
                 for i in range(len(un_assigned)):
                     if un_assigned[i] in element_neighbor:
                         new_island.append(un_assigned[i])
                         indicator += 1
-            element_list = new_island[-indicator:]
-            for i in element_list:
-                un_assigned.remove(i)
+                    new_list += new_island[-indicator:]
+                for i in new_list:
+                    un_assigned.remove(i)
+                element_list = new_list
+        new_island =set(new_island)
         island.append(new_island)
     island_size = []
     for i in island:
