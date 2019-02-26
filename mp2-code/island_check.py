@@ -1,3 +1,5 @@
+import numpy as np
+
 def island_check(board,number):
     zero = np.argwhere(board == 0)
     zero_list = zero.tolist()
