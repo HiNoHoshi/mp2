@@ -4,17 +4,12 @@ from collections import deque
 
 
 def solve(board, pents):
-    print("[ * ]"*100)
     solution = [ ]
 
     solution_board = np.array([[-1 if  (x == 0) else 0 for x in j] for j in board])
-    #variables = define_initial_variables(solution_board, [pents[9],pents[2]])
     variables = define_initial_variables(solution_board, pents)
     unassigned_variables = [ ]
     assigned_variables = deque([ ])
-
-    #test_board = np.array([[0,1,1,1,1],[0,1,1,0,1],[1,1,0,0,1],[0,1,1,1,1],[0,0,1,1,1]])
-    #has_small_holes(test_board)
 
     for var, val in variables.items():
         #LRV: create a list of variables showing first the variables with fewer domain
@@ -23,12 +18,8 @@ def solve(board, pents):
 
     while len(unassigned_variables) > 0:
         current_variable = unassigned_variables[0]
-        print("Variable", current_variable[0])
-        print("unassigned_variables", len(unassigned_variables))
-        print("Assigned_variables", len(assigned_variables))
         (variable_id , values) = current_variable
         dead_end = False
-        print("Starts with this possible Values", len(values))
         unassigned_variables.remove(current_variable)
         selected_value = None
         min_domain_general_reduction = 0
@@ -36,7 +27,6 @@ def solve(board, pents):
         index = 0
         for v in  range(len(values)):
             value = values[index]
-            print("value", value)
             impossible_value = False
             domain_general_reduction = 0
             temp_solution_board = update_state(variables, solution_board, value, variable_id)
@@ -50,7 +40,6 @@ def solve(board, pents):
                 #if a variable has domain 0 after evaluating a value
                 if new_domain_size == 0:
                     impossible_value = True
-                    #print("Impossible value")
                     break
                 else:
                     domain_general_reduction = domain_general_reduction + (last_domain_size - new_domain_size)
@@ -58,8 +47,6 @@ def solve(board, pents):
             if impossible_value:
                 values.remove(value)
                 index = index - 1
-                print("impossible value")
-
 
             else:
                 if min_domain_general_reduction == 0:
@@ -78,14 +65,9 @@ def solve(board, pents):
             solution_board = update_state(variables, solution_board, selected_value, variable_id)
             unassigned_variables = [(var[0],update_domain(variables, solution_board, var[0], var[1])) for var in unassigned_variables]
             assigned_variables.append(current_variable)
-            print("Finishes with this possible Values", len(current_variable[1]))
-
-            print("solution_board:")
-            print(solution_board)
             solution.append(tile_in_form(variables, current_variable[0], selected_value))
 
         else:
-            print("dead end")
             #Backtracking
             #gives back the current variable to the unassigne variable
             unassigned_variables.append(current_variable)
@@ -104,12 +86,10 @@ def solve(board, pents):
 
             #Reset the domain of all the unassigned variables for the last state
             unassigned_variables = [(var[0],update_domain(variables, solution_board, var[0], variables[var[0]]["domain"])) for var in unassigned_variables]
-
             unassigned_variables.append(last_variable)
             unassigned_variables = sorted(unassigned_variables, key =  lambda item: len(item[1]))
             del solution[-1]
 
-            print(solution_board)
 
     return solution
 
@@ -147,10 +127,8 @@ def set_domain(variables,board, variable):
             for form_id, form in tile_forms.items():
                 if not overflows_the_board(board, (i, j), form):
                     temp_board = update_state(variables, board, (form_id,(i, j)), variable)
-                    #print(temp_board)
                     if not one_overlap(board, (i, j), form):
                         if not island_check(temp_board,5):
-                            #print("approve")
                             domain.append((form_id,(i, j)))
 
     return domain
@@ -179,7 +157,6 @@ def forms(tile):
             if np.array_equal(alt,form):
                 rep = True
                 break
-
         if not rep:
             forms[temp_form_id] = alt
             temp_form_id = temp_form_id + 1
@@ -286,16 +263,12 @@ def island_check(board,number):
             new_list = []
             for k in range(previous_indicator):
                 element = element_list[-k]
-                #print('element',element)
                 element_neighbor = neighbors(element[0],element[1])
-                #print(element_neighbor)
                 for i in range(len(un_assigned)):
                     if un_assigned[i] in element_neighbor:
                         new_island.append(un_assigned[i])
                         indicator += 1
-                        #print('island',new_island)
                     new_list = new_island[-indicator:]
-                    #print('list',new_list)
                 for i in new_list:
                     if i in un_assigned:
                         un_assigned.remove(i)
@@ -304,7 +277,6 @@ def island_check(board,number):
     island_size = []
     for i in island:
         island_size.append(len(i))
-        #print(i)
     output = []
     for i in range(len(island_size)):
         if island_size[i] < number:
